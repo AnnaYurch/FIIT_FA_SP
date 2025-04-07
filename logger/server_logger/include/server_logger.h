@@ -6,9 +6,11 @@
 // #include <httplib.h>
 
 class server_logger_builder;
-class server_logger final:
-    public logger
+
+class server_logger final : public logger
 {
+    std::string _destination; //ЗАЧЕМ ЭТО ТУТ? В БИЛДЕРЕ ЖЕ ЕСТЬ?
+    std::unordered_map<logger::severity, std::pair<std::string, bool>> _output_streams; //ЭТО ТОЖЕ ЗАЧЕМ?
 
     // httplib::Client _client;
 

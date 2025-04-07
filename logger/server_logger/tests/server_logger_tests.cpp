@@ -1,5 +1,6 @@
 #include "server.h"
 #include <server_logger_builder.h>
+#include <memory>
 
 int main()
 {
