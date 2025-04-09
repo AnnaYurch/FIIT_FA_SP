@@ -9,7 +9,7 @@ class server_logger_builder final : public logger_builder
 {
 
     std::string _destination; //арес назначения для логгирования: аррес сервера/путь к файлу
-    std::string _format; //..
+    std::string _format = "[%d %t] %s: %m"; //..
 
     std::unordered_map<logger::severity, std::pair<std::string, bool>> _output_streams;
     //unordered_map - контернер, который хранит данные в виде ключ-значение (хранит элементы в хаусе)

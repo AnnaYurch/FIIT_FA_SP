@@ -3,6 +3,8 @@
 
 #include <fstream> //..
 #include <sstream> //..
+#include <nlohmann/json.hpp> //..
+
 
 logger_builder& server_logger_builder::add_file_stream(
     std::string const &stream_file_path,
@@ -26,13 +28,53 @@ logger_builder& server_logger_builder::transform_with_configuration( //ЧО?
     std::string const &configuration_path) &
 {
     std::ifstream config_file(configuration_file_path);
-    if (config_file.is_open()) {
-        std::string line;
-        while (std::getline(config_file, line)) {
-            // Example: parse configuration and populate _output_streams
-            // This should handle parsing based on your specific configuration format
+    if (!config_file.is_open())
+        return *this;
+
+    nlohmann::json config_json;
+    try {
+        config_file >> config_json;
+    } catch (...) {
+        return *this;
+    }
+
+    nlohmann::json* target = &config_json;
+    size_t pos = 0;
+    while (pos < configuration_path.size()) {
+        auto next = configuration_path.find('/', pos);
+        std::string key = configuration_path.substr(pos, next - pos);
+        if (!target->contains(key)) return *this;
+        target = &(*target)[key];
+        if (next == std::string::npos) break;
+        pos = next + 1;
+    }
+
+    if (target->contains("destination"))
+        _destination = (*target)["destination"].get<std::string>();
+
+    if (target->contains("format"))
+        _format = (*target)["format"].get<std::string>();
+
+    if (target->contains("streams")) {
+        for (const auto& stream : (*target)["streams"]) {
+            auto severity_str = stream["severity"].get<std::string>();
+            logger::severity sev;
+
+            if (severity_str == "trace") sev = logger::severity::trace;
+            else if (severity_str == "debug") sev = logger::severity::debug;
+            else if (severity_str == "information") sev = logger::severity::information;
+            else if (severity_str == "warning") sev = logger::severity::warning;
+            else if (severity_str == "error") sev = logger::severity::error;
+            else if (severity_str == "critical") sev = logger::severity::critical;
+            else continue;
+
+            std::string file_path = stream.value("file", "");
+            bool to_console = stream.value("console", false);
+
+            _output_streams[sev] = std::make_pair(file_path, to_console);
         }
     }
+
     return *this;
 }
 
@@ -46,11 +88,6 @@ logger *server_logger_builder::build() const //строим и возвраща�
 {
     return new server_logger(_destination, _output_streams); //ЧТО ТУТ ПРОИСХОДИТ?
 }
-
-
-
-
-
 
 logger_builder& server_logger_builder::set_destination(const std::string& dest) &
 {
