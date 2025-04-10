@@ -2,34 +2,37 @@
 #include <utility>
 #include <not_implemented.h>
 #include "../include/client_logger_builder.h"
+#include <not_implemented.h>
 
 using namespace nlohmann;
 
-logger_builder &client_logger_builder::add_file_stream(
+logger_builder& client_logger_builder::add_file_stream(
     std::string const &stream_file_path,
-    logger::severity severity) &
+    logger::severity severity) & //только для lvalue
 {
-    auto it = _output_streams.find(severity);
-    if (it == _output_streams.end())
-    {
-        auto inserted = _output_streams.emplace(severity, std::make_pair(std::forward_list<client_logger::refcounted_stream>(), false));
-        it = inserted.first;
-    }
+    auto canonical_path = std::filesystem::weakly_canonical(stream_file_path).string();
+    //делаем путь красивым (без /../) и строчкой
 
-    it->second.first.emplace_front(std::filesystem::weakly_canonical(stream_file_path).string());
+    //не перезаписывает значение, если ключ уже есть
+    auto[it, inserted] = _output_streams.try_emplace( //it - итератор на найденную/вставленую пару
+        severity,
+        std::make_pair(std::forward_list<client_logger::refcounted_stream>(), false)
+    );
+    //sev - pair: список лог-файлов и флаг писать лм в консоль
+
+    //it->second.first - дает нам нам список с файлами
+    it->second.first.emplace_front(canonical_path);
 
     return *this;
 }
 
-logger_builder &client_logger_builder::add_console_stream(
+logger_builder& client_logger_builder::add_console_stream(
     logger::severity severity) &
 {
-    auto it = _output_streams.find(severity);
-    if (it == _output_streams.end())
-    {
-        auto inserted = _output_streams.emplace(severity, std::make_pair(std::forward_list<client_logger::refcounted_stream>(), true));
-        it = inserted.first;
-    }
+    auto[it, inserted] = _output_streams.try_emplace(
+        severity,
+        std::make_pair(std::forward_list<client_logger::refcounted_stream>(), false)
+    );
 
     it->second.second = true;
 
@@ -40,96 +43,30 @@ logger_builder& client_logger_builder::transform_with_configuration(
     std::string const &configuration_file_path,
     std::string const &configuration_path) &
 {
-    std::ifstream file(configuration_file_path);
-
-    if (!file.is_open())
-        throw std::ios_base::failure("File " + configuration_file_path + " could not be opened");
-
-    json data = json::parse(file);
-
-    file.close();
-
-    auto it = data.find(configuration_path);
-
-    if (it == data.end() || !it->is_object())
-        return *this;
-
-    parse_severity(logger::severity::trace, (*it)["trace"]);
-    parse_severity(logger::severity::debug, (*it)["debug"]);
-    parse_severity(logger::severity::information, (*it)["information"]);
-    parse_severity(logger::severity::warning, (*it)["warning"]);
-    parse_severity(logger::severity::error, (*it)["error"]);
-    parse_severity(logger::severity::critical, (*it)["critical"]);
-
-    auto format = it->find("format");
-
-    if (format != it->end() && format->is_string())
-    {
-        _format = format.value();
-    }
-
-    return *this;
+    throw not_implemented("logger_builder& client_logger_builder::transform_with_configuration(std::string const &,std::string const &) &", "your code should be here...");
 }
 
-logger_builder &client_logger_builder::clear() &
+logger_builder& client_logger_builder::clear() &
 {
-    _output_streams.clear();
-    _format = "%m";
-
-    return *this;
+    throw not_implemented("logger_builder& client_logger_builder::clear() &", "your code should be here...");
 }
 
 logger *client_logger_builder::build() const
 {
-    return new client_logger(_output_streams, _format);
+    throw not_implemented("logger *client_logger_builder::build() const", "your code should be here...");
 }
 
-logger_builder &client_logger_builder::set_format(const std::string &format) &
+logger_builder& client_logger_builder::set_format(const std::string &format) &
 {
-    _format = format;
-    return *this;
+    throw not_implemented("logger_builder& client_logger_builder::set_format(const std::string &) &", "your code should be here...");
 }
 
 void client_logger_builder::parse_severity(logger::severity sev, nlohmann::json& j)
 {
-    if (j.empty() || !j.is_object())
-        return;
-
-    auto it = _output_streams.find(sev);
-
-    auto data_it = j.find("paths");
-    if (data_it != j.end() && data_it->is_array())
-    {
-        json data = *data_it;
-
-        for (const json& js: data)
-        {
-            if (js.empty() || !js.is_string())
-                continue;
-            const std::string& path = js;
-            if (it == _output_streams.end())
-            {
-                it = _output_streams.emplace(sev, std::make_pair(std::forward_list<client_logger::refcounted_stream>(),
-                                                                 false)).first;
-            }
-
-            it->second.first.emplace_front(std::filesystem::weakly_canonical(path).string());
-        }
-    }
-
-    auto console = j.find("console");
-
-    if (console != j.end() && console->is_boolean())
-    {
-        if (it == _output_streams.end())
-        {
-            it = _output_streams.emplace(sev, std::make_pair(std::forward_list<client_logger::refcounted_stream>(), false)).first;
-        }
-        it->second.second = console->get<bool>();
-    }
+    throw not_implemented("void client_logger_builder::parse_severity(logger::severity, nlohmann::json&)", "your code should be here...");
 }
 
-logger_builder &client_logger_builder::set_destination(const std::string &format) &
+logger_builder& client_logger_builder::set_destination(const std::string &format) &
 {
     throw not_implemented("logger_builder *client_logger_builder::set_destination(const std::string &format)", "invalid call");
 }
