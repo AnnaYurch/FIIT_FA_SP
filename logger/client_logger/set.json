@@ -4,7 +4,7 @@
       "trace": {
         "console" : true,
         "paths" : [
-          "TEST.txt",
+          "Ywe.txt",
           "a.txt"
         ]
       },
@@ -12,29 +12,29 @@
         "console" : true,
         "paths": [
           "b.txt",
-          "TEST.txt"
+          "Ywe.txt"
         ]
       },
       "debug": {
         "console" : true,
         "paths": [
           "a.txt",
-          "TEST.txt"
+          "Ywe.txt"
         ]
       },
       "information": {
         "paths": [
-          "TEST.txt"
+          "Ywe.txt"
         ]
       },
       "critical": {
         "paths": [
-          "TEST.txt"
+          "Ywe.txt"
         ]
       },
       "error": {
         "paths": [
-          "TEST.txt"
+          "Ywe.txt"
         ]
       }
     }

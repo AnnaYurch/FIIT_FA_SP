@@ -146,29 +146,32 @@ client_logger::refcounted_stream::refcounted_stream(const std::string &path)
 
 //////////////////////////////////////
 
+//хрень чтобы один файл не открывался несколько раз, если его неск логов юзают
 client_logger::refcounted_stream::refcounted_stream(const client_logger::refcounted_stream &oth)
 {
+    //копируем имя файла, а дальше чекаем открыт ли он 
     _stream = std::make_pair(oth._stream.first, nullptr);
-    auto it = _global_streams.find(oth._stream.first);
+    auto cur = _global_streams.find(oth._stream.first);
 
-    if (it != _global_streams.end())
+    if (cur != _global_streams.end())
     {
-        ++it->second.first;
-        _stream.second = &it->second.second;
+        ++cur->second.first;
+        _stream.second = &cur->second.second;
     } else
     {
         auto inserted = _global_streams.emplace(_stream.first, std::make_pair<size_t>(1, std::ofstream(oth._stream.first)));
 
         if (!inserted.second || !inserted.first->second.second.is_open())
         {
-            if (inserted.second)
+            if (inserted.second) //если вставка получилась, но файл не открылся
             {
-                _global_streams.erase(inserted.first);
+                _global_streams.erase(inserted.first); //killl
             }
             throw std::ios_base::failure("File " + oth._stream.first + " could not be opened");
         }
 
         _stream.second = &inserted.first->second.second;
+        //сохраняем укаатель на поток
     }
 }
 
@@ -176,34 +179,34 @@ client_logger::refcounted_stream &
 client_logger::refcounted_stream::operator=(const client_logger::refcounted_stream &oth)
 {
     if (this == &oth)
-    return *this;
+        return *this;
 
-if (_stream.second != nullptr)
-{
-    auto it = _global_streams.find(_stream.first);
-
-    if (it != _global_streams.end())
+    if (_stream.second != nullptr)
     {
-        --it->second.first;
+        auto it = _global_streams.find(_stream.first);
 
-        if (it->second.first == 0)
+        if (it != _global_streams.end())
         {
-            it->second.second.close();
-            _global_streams.erase(it);
+            --it->second.first;
+
+            if (it->second.first == 0)
+            {
+                it->second.second.close();
+                _global_streams.erase(it);
+            }
         }
     }
-}
 
-_stream.first = oth._stream.first;
-_stream.second = oth._stream.second;
+    _stream.first = oth._stream.first;
+    _stream.second = oth._stream.second;
 
-if (_stream.second != nullptr)
-{
-    auto it = _global_streams.find(_stream.first);
-    ++it->second.first;
-}
+    if (_stream.second != nullptr)
+    {
+        auto it = _global_streams.find(_stream.first);
+        ++it->second.first;
+    }
 
-return *this;
+    return *this;
 }
 
 client_logger::refcounted_stream::refcounted_stream(client_logger::refcounted_stream &&oth) noexcept
