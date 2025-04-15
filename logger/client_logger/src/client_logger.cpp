@@ -153,12 +153,13 @@ client_logger::refcounted_stream::refcounted_stream(const client_logger::refcoun
     _stream = std::make_pair(oth._stream.first, nullptr);
     auto cur = _global_streams.find(oth._stream.first);
 
-    if (cur != _global_streams.end())
+    if (cur != _global_streams.end()) //если нашли
     {
         ++cur->second.first;
         _stream.second = &cur->second.second;
     } else
     {
+        //вставка файла в глобальный список
         auto inserted = _global_streams.emplace(_stream.first, std::make_pair<size_t>(1, std::ofstream(oth._stream.first)));
 
         if (!inserted.second || !inserted.first->second.second.is_open())
@@ -212,7 +213,7 @@ client_logger::refcounted_stream::operator=(const client_logger::refcounted_stre
 client_logger::refcounted_stream::refcounted_stream(client_logger::refcounted_stream &&oth) noexcept
 {
     std::swap(_stream.first, oth._stream.first);
-    _stream.second = std::exchange(oth._stream.second, nullptr);
+    _stream.second = std::exchange(oth._stream.second, nullptr); //oth._stream.second == nullptr плюсом
 }
 
 client_logger::refcounted_stream &client_logger::refcounted_stream::operator=(client_logger::refcounted_stream &&oth) noexcept
