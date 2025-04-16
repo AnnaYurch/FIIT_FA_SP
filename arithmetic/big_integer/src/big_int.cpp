@@ -349,13 +349,13 @@ big_int &big_int::minus_assign(const big_int &other, size_t shift) & {
 
 	return *this;
 }
-//neno
+
 big_int &big_int::operator*=(const big_int &other) & {
-	return multiply_assign(other, decide_mult((other._digits.size())));
+	return multiply_assign(other, big_int::multiplication_rule::trivial);
 }
-//neno
+
 big_int &big_int::operator/=(const big_int &other) & {
-	return divide_assign(other, decide_div(other._digits.size()));
+	return divide_assign(other, big_int::division_rule::trivial);
 }
 
 std::string big_int::to_string() const {
@@ -366,7 +366,7 @@ std::string big_int::to_string() const {
 	tmp._sign = true;
 	while (tmp) {
 		auto val = tmp % 10;
-		res += static_cast<char>('0' + val._digits[0]);
+		res += ('0' + val._digits[0]);
 		tmp /= 10;
 	}
 
@@ -386,7 +386,7 @@ std::ostream &operator<<(std::ostream &stream, const big_int &value) {
 std::istream &operator>>(std::istream &stream, big_int &value) {
 	std::string val;
 	stream >> val;
-	value = big_int(val, 10, value._digits.get_allocator());
+	value = big_int(val);
 	return stream;
 }
 
@@ -410,19 +410,20 @@ big_int::big_int(std::vector<unsigned int, pp_allocator<unsigned int>> &&digits,
 
 
 big_int::big_int(const std::string &num, unsigned int radix, pp_allocator<unsigned int> allocator) : _sign(true), _digits(allocator) {
+	if (radix > 36 || radix < 2)
+        throw std::invalid_argument("Radix must be in interval [2, 36], but is " + std::to_string(radix));
+	
 	if (num.empty()) {
 		_digits.push_back(0);
 		return;
 	}
 
 	std::string num1 = num;
-	bool is_neg = false;
-	if (num1[0] == '-') {
-		is_neg = true;
+	bool is_neg = 0;
+	if (num1[0] == '-' || num1[0] == '+') {
+		is_neg = num1[0] == '-';
 		num1 = num1.substr(1);
-	} else if (num1[0] == '+') {
-		num1 = num1.substr(1);
-	}
+	} 
 
 	while (num1.size() > 1 && num1[0] == '0') {
 		num1 = num1.substr(1);
@@ -433,14 +434,23 @@ big_int::big_int(const std::string &num, unsigned int radix, pp_allocator<unsign
 		return;
 	}
 
-	_digits.push_back(0);
 	for (char c: num1) {
-		if (!std::isdigit(c)) {
+		unsigned int digit;
+		if (c >= '0' && c <= '9') {
+			digit = c - '0';
+		} else if (c >= 'A' && c <= 'Z') {
+			digit = 10 + (c - 'A');
+		} else if (c >= 'a' && c <= 'z') {
+			digit = 10 + (c - 'a');
+		} else {
 			throw std::invalid_argument("Invalid character in number string");
 		}
 
-		unsigned int digit = c - '0';
-		*this *= 10;
+		if (digit >= radix) {
+			throw std::invalid_argument("Digit exceeds radix");
+		}
+
+		*this *= radix; 
 		*this += big_int(static_cast<long long>(digit), allocator);
 	}
 
@@ -450,10 +460,9 @@ big_int::big_int(const std::string &num, unsigned int radix, pp_allocator<unsign
 	}
 }
 
-big_int::big_int(pp_allocator<unsigned int> allocator) : _digits(allocator), _sign(true) {
-	_digits.push_back(0);
+big_int::big_int(pp_allocator<unsigned int> allocator) : _digits({0}, allocator), _sign(true) {
 }
-//neno
+
 big_int &big_int::multiply_assign(const big_int &other, big_int::multiplication_rule rule) & {
 	//карацубу добавить
 	if (is_zero(_digits)) {
@@ -467,23 +476,28 @@ big_int &big_int::multiply_assign(const big_int &other, big_int::multiplication_
 		return *this;
 	}
 
-	big_int result(_digits.get_allocator());
-	result._digits.resize(_digits.size() + other._digits.size(), 0);
-	for (size_t i = 0; i < _digits.size(); ++i) {
-		unsigned long long carry = 0;
-		for (size_t j = 0; j < other._digits.size() || carry; ++j) {
-			unsigned long long prod = result._digits[i + j] + carry;
-			if (j < other._digits.size()) {
-				prod += static_cast<unsigned long long>(_digits[i]) * other._digits[j];
-			}
+	const size_t new_size = _digits.size() + other._digits.size();
+    std::vector<unsigned int, pp_allocator<unsigned int>> result(new_size, 0, _digits.get_allocator());
 
-			result._digits[i + j] = static_cast<unsigned int>(prod % BASE);
-			carry = prod / BASE;
-		}
-	}
+    for (size_t i = 0; i < _digits.size(); ++i) {
+        uint64_t carry = 0;
+        const uint64_t a = _digits[i];
+        
+        for (size_t j = 0; j < other._digits.size(); ++j) {
+            uint64_t product = a * other._digits[j] + result[i+j] + carry;
+            result[i+j] = static_cast<unsigned int>(product % BASE);
+            carry = product / BASE;
+        }
 
-	_sign = (_sign == other._sign);
-	_digits = std::move(result._digits);
+        for (size_t k = i + other._digits.size(); carry > 0 && k < new_size; ++k) {
+            uint64_t sum = result[k] + carry;
+            result[k] = sum % BASE;
+            carry = sum / BASE;
+        }
+    }
+
+    _digits = std::move(result);
+    _sign = (_sign == other._sign);
 	optimise(_digits);
 	return *this;
 }
@@ -592,15 +606,7 @@ big_int &big_int::modulo_assign(const big_int &other, big_int::division_rule rul
 	optimise(_digits);
 	return *this;
 }
-//neno
-big_int::multiplication_rule big_int::decide_mult(size_t rhs) const noexcept {
-	return rhs > 64 ? big_int::multiplication_rule::Karatsuba : big_int::multiplication_rule::trivial;
-}
-//neno
-big_int::division_rule big_int::decide_div(size_t rhs) const noexcept {
-	return big_int::division_rule::trivial;
-}
-//neno
+
 big_int operator""_bi(unsigned long long n) {
-	return {n};
+	return n;
 }
