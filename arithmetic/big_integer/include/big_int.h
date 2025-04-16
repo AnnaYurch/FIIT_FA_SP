@@ -182,15 +182,14 @@ big_int::big_int(const std::vector<unsigned int, alloc>& digits, bool sign, pp_a
 }
 
 template<std::integral Num>
-big_int::big_int(Num d, pp_allocator<unsigned int> allocator) : _sign(d >= 0), _digits(allocator) {
-	auto abs_d = static_cast<unsigned long long>(d < 0 ? -d : d);
-	_digits.clear();
+big_int::big_int(Num d, pp_allocator<unsigned int> allocator) : _sign(d >= 0){
+	auto abs_d = d < 0 ? -d : d;
 	if (abs_d == 0) {
 		_digits.push_back(0);
 	} else {
 		unsigned long long BASE = 1ULL << (8 * sizeof(unsigned int));
 		while (abs_d > 0) {
-			_digits.push_back(static_cast<unsigned int>(abs_d % BASE));
+			_digits.push_back(abs_d % BASE);
 			abs_d /= BASE;
 		}
 	}

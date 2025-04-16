@@ -10,22 +10,22 @@
 #include <cmath>
 #include <algorithm>
 
-bool is_zero(const std::vector<unsigned int, pp_allocator<unsigned int>> &digits) {
-	return digits.size() == 1 && digits[0] == 0;
+bool is_zero(const auto& digits) {
+    return digits.empty() || (digits.size() == 1 && digits.front() == 0);
 }
 
-void optimise(std::vector<unsigned int, pp_allocator<unsigned int>> &digits) {
-	while (digits.size() > 1 && digits.back() == 0) {
-		digits.pop_back();
-	}
+void optimise(auto& digits) {
+    if (digits.size() <= 1) return;
+    if (digits.back() != 0) return;
+    
+    digits.pop_back();
+    optimise(digits);
 }
 
 std::strong_ordering big_int::operator<=>(const big_int &other) const noexcept
 {
-    if (_sign != other._sign) 
-    {
-        return _sign ? std::strong_ordering::greater : std::strong_ordering::less;
-    }
+    if (!_sign && other._sign) return std::strong_ordering::less;
+    if (_sign && !other._sign) return std::strong_ordering::greater;
 
     bool is_it_pos = _sign;
 
@@ -40,7 +40,7 @@ std::strong_ordering big_int::operator<=>(const big_int &other) const noexcept
         }
     }
 
-    for (int i = static_cast<int>(_digits.size()) - 1; i >= 0; i--) 
+    for (int i = _digits.size() - 1; i >= 0; i--) 
     {
         if (_digits[i] != other._digits[i]) {
             if (is_it_pos) 
@@ -261,34 +261,34 @@ big_int &big_int::operator>>=(size_t shift) & {
 }
 
 big_int &big_int::plus_assign(const big_int &other, size_t shift) & {
-	if (other._digits.size() == 1 && other._digits[0] == 0) return *this;
+	if (is_zero(other._digits)) {
+        return *this;
+    }
 
-	if (_sign == other._sign) {
-		size_t max_size = std::max(_digits.size(), other._digits.size() + shift);
-		_digits.resize(max_size, 0);
+	if (_sign != other._sign) {
+        big_int neg_other = other;
+        neg_other._sign = _sign;
+        return minus_assign(neg_other, shift);
+    } else if (_sign == other._sign) {
+		const size_t required_size = std::max(_digits.size(), other._digits.size() + shift);
+		if (_digits.size() < required_size) {
+			_digits.resize(required_size, 0);
+		}
 
 		unsigned long long carry = 0;
-		for (size_t i = 0; i < max_size; ++i) {
-			unsigned long long sum = carry;
-			if (i < _digits.size()) {
-				sum += _digits[i];
-			}
+		for (size_t i = 0; i < required_size; ++i) {
+			unsigned long long a = (i < _digits.size()) ? _digits[i] : 0;
+			unsigned long long b = (i >= shift && (i - shift) < other._digits.size()) 
+								? other._digits[i - shift] : 0;
 
-			if (i >= shift && (i - shift) < other._digits.size()) {
-				sum += other._digits[i - shift];
-			}
-
+			unsigned long long sum = a + b + carry;
 			_digits[i] = static_cast<unsigned int>(sum % BASE);
 			carry = sum / BASE;
 		}
 
 		if (carry > 0) {
-			_digits.push_back(static_cast<unsigned int>(carry));
+			_digits.push_back(carry);
 		}
-	} else {
-		big_int temp(other);
-		temp._sign = _sign;
-		minus_assign(temp, shift);
 	}
 
 	optimise(_digits);
@@ -300,64 +300,60 @@ big_int &big_int::plus_assign(const big_int &other, size_t shift) & {
 }
 
 big_int &big_int::minus_assign(const big_int &other, size_t shift) & {
-	if (is_zero(other._digits)) return *this;
+	if (is_zero(other._digits)) {
+        return *this;
+    }
 
 	if (_sign != other._sign) {
-		big_int temp(other);
-		temp._sign = _sign;
-		return plus_assign(temp, shift);
-	}
+        big_int neg_other = other;
+        neg_other._sign = _sign;
+        return plus_assign(neg_other, shift);
+    } else if (_sign == other._sign) {
+		big_int this_copy(*this);
+		big_int other_copy(other);
+		this_copy._sign = true;
+		other_copy._sign = true;
+		other_copy <<= shift;
 
-	big_int abs_this(*this);
-	abs_this._sign = true;
-	big_int abs_other(other);
-	abs_other._sign = true;
-	abs_other <<= shift;
-
-	bool result_sign = _sign;
-	if ((abs_this <=> abs_other) == std::strong_ordering::less) {
-		result_sign = !result_sign;
-		std::swap(abs_this._digits, abs_other._digits);
-	}
-
-	size_t max_size = std::max(abs_this._digits.size(), abs_other._digits.size());
-	std::vector<unsigned int, pp_allocator<unsigned int>> result(max_size, 0, _digits.get_allocator());
-	long long borrow = 0;
-
-	for (size_t i = 0; i < max_size; ++i) {
-		long long difference = borrow;
-		if (i < abs_this._digits.size()) {
-			difference += abs_this._digits[i];
+		bool result_sign = _sign;
+		if ((this_copy <=> other_copy) == std::strong_ordering::less) {
+			result_sign = !result_sign;
+			std::swap(this_copy._digits, other_copy._digits);
 		}
 
-		if (i < abs_other._digits.size()) {
-			difference -= abs_other._digits[i];
+		long long borrow = 0;
+    	for (size_t i = 0; i < this_copy._digits.size(); ++i) {
+			long long diff = this_copy._digits[i] - borrow;
+			if (i < other_copy._digits.size()) {
+				diff -= other_copy._digits[i];
+			}
+
+			if (diff < 0) {
+				diff += BASE;
+				borrow = 1;
+			} else {
+				borrow = 0;
+			}
+			this_copy._digits[i] = diff;
 		}
 
-		if (difference < 0) {
-			difference += static_cast<long long>(BASE);
-			borrow = -1;
-		} else {
-			borrow = 0;
-		}
-		result[i] = static_cast<unsigned int>(difference);
+		_digits = std::move(this_copy._digits);
+		_sign = result_sign;
 	}
 
-	_digits = std::move(result);
-	_sign = result_sign;
+	
 	optimise(_digits);
-
 	if (is_zero(_digits)) {
 		_sign = true;
 	}
 
 	return *this;
 }
-
+//neno
 big_int &big_int::operator*=(const big_int &other) & {
 	return multiply_assign(other, decide_mult((other._digits.size())));
 }
-
+//neno
 big_int &big_int::operator/=(const big_int &other) & {
 	return divide_assign(other, decide_div(other._digits.size()));
 }
@@ -457,22 +453,17 @@ big_int::big_int(const std::string &num, unsigned int radix, pp_allocator<unsign
 big_int::big_int(pp_allocator<unsigned int> allocator) : _digits(allocator), _sign(true) {
 	_digits.push_back(0);
 }
-
+//neno
 big_int &big_int::multiply_assign(const big_int &other, big_int::multiplication_rule rule) & {
-	if (is_zero(_digits)) return *this;
+	//карацубу добавить
+	if (is_zero(_digits)) {
+        return *this;
+    }
 
 	if (is_zero(other._digits)) {
 		_digits.clear();
 		_digits.push_back(0);
 		_sign = true;
-		return *this;
-	}
-
-	if (rule == big_int::multiplication_rule::Karatsuba) {
-		big_int result = multiply_karatsuba(*this, other);
-		_digits = std::move(result._digits);
-		_sign = (_sign == other._sign);
-		optimise(_digits);
 		return *this;
 	}
 
@@ -496,7 +487,7 @@ big_int &big_int::multiply_assign(const big_int &other, big_int::multiplication_
 	optimise(_digits);
 	return *this;
 }
-
+//neno
 big_int &big_int::divide_assign(const big_int &other, big_int::division_rule rule) & {
 	if (is_zero(_digits)) return *this;
 	if (is_zero(other._digits)) throw std::logic_error("Division by zero");
@@ -550,7 +541,7 @@ big_int &big_int::divide_assign(const big_int &other, big_int::division_rule rul
 	optimise(_digits);
 	return *this;
 }
-
+//neno
 big_int &big_int::modulo_assign(const big_int &other, big_int::division_rule rule) & {
 	if (is_zero(_digits)) return *this;
 	if (is_zero(other._digits)) throw std::logic_error("Division by zero");
@@ -601,62 +592,15 @@ big_int &big_int::modulo_assign(const big_int &other, big_int::division_rule rul
 	optimise(_digits);
 	return *this;
 }
-
+//neno
 big_int::multiplication_rule big_int::decide_mult(size_t rhs) const noexcept {
 	return rhs > 64 ? big_int::multiplication_rule::Karatsuba : big_int::multiplication_rule::trivial;
 }
-
+//neno
 big_int::division_rule big_int::decide_div(size_t rhs) const noexcept {
 	return big_int::division_rule::trivial;
 }
-
+//neno
 big_int operator""_bi(unsigned long long n) {
 	return {n};
-}
-big_int multiply_karatsuba(const big_int &a, const big_int &b) {
-	if (a._digits.size() < 32 || b._digits.size() < 32) {
-		big_int result = a;
-		result.multiply_assign(b, big_int::multiplication_rule::trivial);
-		return result;
-	}
-
-	size_t max_size = std::max(a._digits.size(), b._digits.size()) / 2;
-
-	big_int low1(a._digits.get_allocator()), high1(a._digits.get_allocator());
-	big_int low2(b._digits.get_allocator()), high2(b._digits.get_allocator());
-
-	low1._digits.assign(a._digits.begin(), a._digits.begin() + static_cast<long long>(std::min(max_size, a._digits.size())));
-	if (a._digits.size() > max_size) {
-		high1._digits.assign(a._digits.begin() + static_cast<long long>(max_size), a._digits.end());
-	}
-
-	low2._digits.assign(b._digits.begin(), b._digits.begin() + static_cast<long long>(std::min(max_size, b._digits.size())));
-	if (b._digits.size() > max_size) {
-		high2._digits.assign(b._digits.begin() + static_cast<long long>(max_size), b._digits.end());
-	}
-
-	low1._sign = high1._sign = low2._sign = high2._sign = true;
-
-	big_int z0 = multiply_karatsuba(low1, low2);
-	big_int z2 = multiply_karatsuba(high1, high2);
-
-	big_int sum1 = low1;
-	sum1.plus_assign(high1);
-
-	big_int sum2 = low2;
-	sum2.plus_assign(high2);
-
-	big_int z1 = multiply_karatsuba(sum1, sum2);
-	z1.minus_assign(z0);
-	z1.minus_assign(z2);
-
-	z2 <<= max_size * 2 * 32;
-	z1 <<= max_size * 32;
-
-	z2.plus_assign(z1);
-	z2.plus_assign(z0);
-
-	z2._sign = (a._sign == b._sign);
-	optimise(z2._digits);
-	return z2;
 }
