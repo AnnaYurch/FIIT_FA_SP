@@ -501,111 +501,88 @@ big_int &big_int::multiply_assign(const big_int &other, big_int::multiplication_
 	optimise(_digits);
 	return *this;
 }
-//neno
+
 big_int &big_int::divide_assign(const big_int &other, big_int::division_rule rule) & {
+    if (is_zero(other._digits)) { 
+		throw std::logic_error("Division by zero");
+	}
+
 	if (is_zero(_digits)) return *this;
-	if (is_zero(other._digits)) throw std::logic_error("Division by zero");
 
-	big_int abs_this(*this);
-	abs_this._sign = true;
-	big_int abs_other(other);
-	abs_other._sign = true;
-	if (abs_this < abs_other) {
-		_digits.clear();
-		_digits.push_back(0);
-		_sign = true;
-		return *this;
-	}
+    big_int abs_this = *this;
+    abs_this._sign = true;
+    big_int abs_other = other;
+    abs_other._sign = true;
 
-	std::vector<unsigned int, pp_allocator<unsigned int>> quotient(_digits.size(), 0, _digits.get_allocator());
-	big_int remain(_digits.get_allocator());
-	remain._digits.clear();
-	remain._digits.push_back(0);
-	for (int i = static_cast<int>(_digits.size()) - 1; i >= 0; i--) {
-		remain._digits.insert(remain._digits.begin(), _digits[i]);
-		while (remain._digits.size() > 1 && remain._digits.back() == 0) {
-			remain._digits.pop_back();
-		}
+    if (abs_this < abs_other) {
+        _digits = {0};
+        _sign = true;
+        return *this;
+    }
 
-		if (remain._digits.empty()) {
-			remain._sign = true;
-		}
+    std::vector<unsigned int, pp_allocator<unsigned int>> quotient(_digits.size(), 0, _digits.get_allocator());
+    big_int remain(_digits.get_allocator());
 
-		unsigned long long left = 0, q = 0, right = BASE;
-		while (left <= right) {
-			unsigned long long mid = left + (right - left) / 2;
-			big_int temp = abs_other * big_int(static_cast<long long>(mid), _digits.get_allocator());
-			if (remain >= temp) {
-				q = mid;
-				left = mid + 1;
-			} else {
-				right = mid - 1;
-			}
-		}
+    for (int i = static_cast<int>(_digits.size()) - 1; i >= 0; --i) {
+        remain._digits.insert(remain._digits.begin(), _digits[i]);
+        optimise(remain._digits);
 
-		if (q > 0) {
-			big_int temp = abs_other * big_int(static_cast<long long>(q), _digits.get_allocator());
-			remain -= temp;
-		}
-		quotient[i] = static_cast<unsigned int>(q);
-	}
+        unsigned int q = 0;
+        unsigned int left = 0;
+        unsigned int right = BASE - 1;
 
-	_sign = (_sign == other._sign);
-	_digits = std::move(quotient);
-	optimise(_digits);
-	return *this;
+        while (left <= right) {
+            unsigned int mid = left + (right - left) / 2;
+            big_int product = abs_other * big_int(static_cast<long long>(mid), _digits.get_allocator());
+
+            if (product <= remain) {
+                q = mid;
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        if (q > 0) {
+            big_int product = abs_other * big_int(static_cast<long long>(q), _digits.get_allocator());
+            remain -= product;
+        }
+
+        quotient[i] = q;
+    }
+
+    _digits = std::move(quotient);
+    _sign = (_sign == other._sign);
+    optimise(_digits);
+
+    return *this;
 }
-//neno
+
 big_int &big_int::modulo_assign(const big_int &other, big_int::division_rule rule) & {
-	if (is_zero(_digits)) return *this;
 	if (is_zero(other._digits)) throw std::logic_error("Division by zero");
+    if (is_zero(_digits)) return *this;
 
-	big_int abs_this(*this);
-	abs_this._sign = true;
-	big_int abs_other(other);
-	abs_other._sign = true;
-	if (abs_this < abs_other) {
-		_sign = true;
-		return *this;
-	}
+    const bool dividend_sign = _sign;
+    
+    _sign = true;
+    big_int abs_other = other;
+    abs_other._sign = true;
 
-	big_int remain(_digits.get_allocator());
-	remain._digits.clear();
-	remain._digits.push_back(0);
-	for (int i = static_cast<int>(_digits.size()) - 1; i >= 0; --i) {
-		remain._digits.insert(remain._digits.begin(), _digits[i]);
-		while (remain._digits.size() > 1 && remain._digits.back() == 0) {
-			remain._digits.pop_back();
-		}
+    big_int quotient = *this / abs_other;
+    *this -= quotient * abs_other;
 
-		if (remain._digits.empty()) {
-			remain._sign = true;
-		}
+    _sign = dividend_sign;
+    
+    if (!_sign && !is_zero(_digits)) {
+        *this -= abs_other;
+    } else if (other._sign == false && !is_zero(_digits)) {
+        *this += abs_other;
+    }
 
-		unsigned long long left = 0, right = BASE;
-		unsigned long long q = 0;
-		while (left <= right) {
-			unsigned long long mid = left + (right - left) / 2;
-			big_int temp = abs_other * big_int(static_cast<long long>(mid), _digits.get_allocator());
-			if (remain >= temp) {
-				q = mid;
-				left = mid + 1;
-			} else {
-				right = mid - 1;
-			}
-		}
-
-		if (q > 0) {
-			big_int temp = abs_other * big_int(static_cast<long long>(q), _digits.get_allocator());
-			remain -= temp;
-		}
-	}
-
-	_digits = std::move(remain._digits);
-	_sign = true;
-	optimise(_digits);
-	return *this;
+    optimise(_digits);
+    return *this;
 }
+
 
 big_int operator""_bi(unsigned long long n) {
 	return n;
