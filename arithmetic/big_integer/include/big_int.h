@@ -167,6 +167,8 @@ public:
 
     std::string to_string() const;
 
+    big_int get_lower_half(size_t half_size) const;
+    big_int get_upper_half(size_t half_size) const;
     friend big_int multiply_karatsuba(const big_int &a, const big_int &b);
 };
 

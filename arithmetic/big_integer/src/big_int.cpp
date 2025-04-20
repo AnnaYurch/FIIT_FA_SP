@@ -351,7 +351,7 @@ big_int &big_int::minus_assign(const big_int &other, size_t shift) & {
 }
 
 big_int &big_int::operator*=(const big_int &other) & {
-	return multiply_assign(other, big_int::multiplication_rule::trivial);
+	return multiply_assign(other, decide_mult((other._digits.size())));
 }
 
 big_int &big_int::operator/=(const big_int &other) & {
@@ -411,7 +411,7 @@ big_int::big_int(std::vector<unsigned int, pp_allocator<unsigned int>> &&digits,
 
 big_int::big_int(const std::string &num, unsigned int radix, pp_allocator<unsigned int> allocator) : _sign(true), _digits(allocator) {
 	if (radix > 36 || radix < 2)
-        throw std::invalid_argument("Radix must be in interval [2, 36], but is " + std::to_string(radix));
+        throw std::invalid_argument("Radix must be in interval [2, 36], but is ");
 	
 	if (num.empty()) {
 		_digits.push_back(0);
@@ -473,6 +473,14 @@ big_int &big_int::multiply_assign(const big_int &other, big_int::multiplication_
 		_digits.clear();
 		_digits.push_back(0);
 		_sign = true;
+		return *this;
+	}
+
+	if (rule == big_int::multiplication_rule::Karatsuba) {
+		big_int result = multiply_karatsuba(*this, other);
+		_digits = std::move(result._digits);
+		_sign = (_sign == other._sign);
+		optimise(_digits);
 		return *this;
 	}
 
@@ -585,5 +593,47 @@ big_int &big_int::modulo_assign(const big_int &other, big_int::division_rule rul
 
 
 big_int operator""_bi(unsigned long long n) {
-	return n;
+	return {n};
+}
+
+big_int::multiplication_rule big_int::decide_mult(size_t rhs) const noexcept {
+	return rhs > 64 ? big_int::multiplication_rule::Karatsuba : big_int::multiplication_rule::trivial;
+}
+
+big_int big_int::get_lower_half(size_t half_size) const {
+	big_int result;
+	size_t size = std::min(half_size, _digits.size());
+	result._digits.assign(_digits.begin(), _digits.begin() + size);
+	result._sign = true; 
+	return result;
+}
+
+big_int big_int::get_upper_half(size_t half_size) const {
+	big_int result;
+	if (_digits.size() > half_size) {
+		result._digits.assign(_digits.begin() + half_size, _digits.end());
+	}
+	result._sign = true; 
+	return result;
+}
+
+big_int multiply_karatsuba(const big_int &a, const big_int &b) {
+	size_t half = std::max(a._digits.size(), b._digits.size()) / 2;
+
+    big_int a_low = a.get_lower_half(half);
+    big_int a_high = a.get_upper_half(half);
+
+    big_int b_low = b.get_lower_half(half);
+    big_int b_high = b.get_upper_half(half);
+
+    big_int z0 = multiply_karatsuba(a_low, b_low);     
+    big_int z2 = multiply_karatsuba(a_high, b_high);   
+    
+    big_int z1 = multiply_karatsuba(a_low + a_high, b_low + b_high) - z0 - z2;
+
+    big_int result = (z2 << (half * 2 * 32)) + (z1 << (half * 32)) + z0;
+
+    result._sign = (a._sign == b._sign);
+    
+    return result;
 }
