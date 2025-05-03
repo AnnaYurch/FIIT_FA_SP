@@ -1,5 +1,4 @@
-
-enable_testing()  # Включаем поддержку тестирования
+find_package(Crow CONFIG REQUIRED)
 
 add_executable(
         mp_os_lggr_srvr_lggr_tests
@@ -8,8 +7,7 @@ add_executable(
 target_link_libraries(
         mp_os_lggr_srvr_lggr_tests
         PRIVATE
-        gtest_main
-)
+        gtest_main)
 target_link_libraries(
         mp_os_lggr_srvr_lggr_tests
         PRIVATE
@@ -25,13 +23,9 @@ target_link_libraries(
         serv_test
         PRIVATE
         gtest_main
+        Crow::Crow
 )
 target_link_libraries(
         serv_test
         PRIVATE
         mp_os_lggr_srvr_lggr)
-
-
-# Добавляем тесты
-add_test(NAME LoggerTests COMMAND mp_os_lggr_srvr_lggr_tests)
-add_test(NAME ServerTests COMMAND serv_test)

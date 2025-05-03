@@ -1,5 +1,6 @@
 add_subdirectory(tests)
 
+find_package(httplib REQUIRED)
 
 add_library(
         mp_os_lggr_srvr_lggr
@@ -23,3 +24,7 @@ target_link_libraries(
         mp_os_lggr_srvr_lggr
         PUBLIC
         nlohmann_json::nlohmann_json)
+target_link_libraries(
+        mp_os_lggr_srvr_lggr
+        PUBLIC
+        httplib::httplib)
