@@ -31,6 +31,15 @@ private:
 
     void *_trusted_memory;
 
+    //мяу
+    void* allocate_first_fit(size_t size);
+	void* allocate_best_fit(size_t size);
+	void* allocate_worst_fit(size_t size);
+	void* allocate_new_block(char* address, size_t size, void** first_block_ptr, size_t size_free);
+	void* allocate_in_hole(char* address, size_t size, void** first_block_ptr, void* prev_block, void* next_block, size_t size_free);
+	std::pmr::memory_resource* get_parent_resource() const noexcept;
+	allocator_with_fit_mode::fit_mode get_fit_mode() const;
+    //мяу
 public:
     
     ~allocator_boundary_tags() override;
@@ -55,18 +64,15 @@ public:
 
 public:
     
-    [[nodiscard]] void *do_allocate_sm(
-        size_t bytes) override;
+    [[nodiscard]] void *do_allocate_sm(size_t bytes) override;
     
-    void do_deallocate_sm(
-        void *at) override;
+    void do_deallocate_sm(void *at) override;
 
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override;
 
 public:
     
-    inline void set_fit_mode(
-        allocator_with_fit_mode::fit_mode mode) override;
+    inline void set_fit_mode(allocator_with_fit_mode::fit_mode mode) override;
 
 public:
     
@@ -81,6 +87,9 @@ private:
     inline logger *get_logger() const override;
 
     inline std::string get_typename() const noexcept override;
+    
+    //мяу
+    inline std::mutex& get_mutex() const;
 
     class boundary_iterator
     {
