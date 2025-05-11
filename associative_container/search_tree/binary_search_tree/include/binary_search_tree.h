@@ -2358,35 +2358,15 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
 // endregion binary_search_tree methods_insert and methods_emplace implementation
 
 // region binary_search_tree swap_method implementation
-//////////////////////////////
+
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 void binary_search_tree<tkey, tvalue, compare, tag>::swap(binary_search_tree& other) noexcept {
 	if (this == &other) return;
 
-	node* this_root = _root;
-	pp_allocator<value_type> this_alloc = _allocator;
-	logger* this_logger = _logger;
-	try {
-		_root = other._root;
-		_allocator = other._allocator;
-		_logger = other._logger;
-		other._root = this_root;
-		other._allocator = this_alloc;
-		other._logger = this_logger;
-
-		if (_logger) {
-			_logger->log("Swapped trees (this)", logger::severity::debug);
-		}
-
-		if (other._logger) {
-			other._logger->log("Swapped trees (other)", logger::severity::debug);
-		}
-	} catch (...) {
-		_root = this_root;
-		_allocator = this_alloc;
-		_logger = this_logger;
-		std::terminate();
-	}
+	using std::swap;
+    swap(_root, other._root);
+    swap(_allocator, other._allocator);
+    swap(_logger, other._logger);
 }
 
 // endregion binary_search_tree swap_method implementation
@@ -2510,7 +2490,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::upper_bound(const tkey& key) con
 
 	return infix_const_iterator(result);
 }
-
+//хуета
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_search_tree<
 		tkey, tvalue, compare, tag>::erase(infix_iterator pos) {
@@ -2538,7 +2518,7 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
 
 	return infix_iterator(next);
 }
-
+//////////////////////////////
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_search_tree<
 		tkey, tvalue, compare, tag>::erase(infix_const_iterator pos) {
