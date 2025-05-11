@@ -1981,7 +1981,7 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::postfix_const_reverse_ite
 // endregion postfix_const_reverse_iterator implementation
 
 // region binary_search_tree implementation
-//////////////////////////////
+
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(const compare& comp, pp_allocator<value_type> alloc,
 																   logger* logger)
@@ -2021,17 +2021,20 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(std::initiali
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(const binary_search_tree& other)
-	: compare(other.compare), _logger(other._logger), _allocator(other._allocator) {
-	if (other._root) {
-		_root = _allocator.template new_object<node>(nullptr, other._root->data);
-		for (auto it = other.begin(); it != other.end(); ++it) {
-			if (it != other.begin()) {
-				emplace(it->first, it->second);
+	: compare(other.compare), _logger(other._logger), _allocator(other._allocator), _root(nullptr) {
+		if (!other._root) { 
+			return;
+		} else  {
+			_root = _allocator.template new_object<node>(nullptr, other._root->data);
+			bool is_first = true;
+			for (const auto& [key, value] : other) {
+				if (is_first) {
+					is_first = false;
+					continue;
+				}
+				emplace(key, value);
 			}
-		}
-	} else {
-		_root = nullptr;
-	}
+	} 
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2104,39 +2107,29 @@ const tvalue& binary_search_tree<tkey, tvalue, compare, tag>::at(const tkey& key
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 tvalue& binary_search_tree<tkey, tvalue, compare, tag>::operator[](const tkey& key) {
 	node* current = _root;
-	node* parent = nullptr;
 	while (current != nullptr) {
 		if (compare_keys(key, current->data.first)) {
-			parent = current;
 			current = current->left_subtree;
 		} else if (compare_keys(current->data.first, key)) {
-			parent = current;
 			current = current->right_subtree;
 		} else {
 			return current->data.second;
 		}
 	}
-
-	throw std::out_of_range("Key not found");
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 tvalue& binary_search_tree<tkey, tvalue, compare, tag>::operator[](tkey&& key) {
 	node* current = _root;
-	node* parent = nullptr;
 	while (current != nullptr) {
 		if (compare_keys(key, current->data.first)) {
-			parent = current;
 			current = current->left_subtree;
 		} else if (compare_keys(current->data.first, key)) {
-			parent = current;
 			current = current->right_subtree;
 		} else {
 			return current->data.second;
 		}
 	}
-
-	throw std::out_of_range("Key not found");
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2193,9 +2186,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(const value_type& value) 
 	}
 
 	++_size;
-	if (_logger) {
-		_logger->log("New node inserted", logger::severity::debug);
-	}
 
 	__detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
 	return std::make_pair(infix_iterator(new_node), true);
@@ -2227,9 +2217,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(value_type&& value) {
 	}
 
 	++_size;
-	if (_logger) {
-		_logger->log("New node inserted", logger::severity::debug);
-	}
+
 	__detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
 	return std::make_pair(infix_iterator(new_node), true);
 }
@@ -2285,9 +2273,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(const value_typ
 
 	++_size;
 
-	if (_logger) {
-		_logger->log("New node inserted or assigned", logger::severity::debug);
-	}
 	__detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
 	return infix_iterator(new_node);
 }
@@ -2319,9 +2304,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(value_type&& va
 	}
 
 	++_size;
-	if (_logger) {
-		_logger->log("New node inserted or assigned", logger::severity::debug);
-	}
+
 	__detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
 	return infix_iterator(new_node);
 }
@@ -2329,20 +2312,12 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(value_type&& va
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 template<std::input_iterator InputIt>
 void binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(InputIt first, InputIt last) {
-	if (_logger) {
-		_logger->log("Starting range insert_or_assign", logger::severity::debug);
-	}
-
 	for (auto it = first; it != last; ++it) {
 		if constexpr (std::is_rvalue_reference_v<decltype(*it)>) {
 			insert_or_assign(std::move(*it));
 		} else {
 			insert_or_assign(*it);
 		}
-	}
-
-	if (_logger) {
-		_logger->log("Range insert_or_assign completed", logger::severity::debug);
 	}
 }
 
@@ -2375,9 +2350,6 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
 	}
 
 	++_size;
-	if (_logger) {
-		_logger->log("New node emplaced or assigned", logger::severity::debug);
-	}
 
 	__detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
 	return infix_iterator(new_node);
@@ -2386,7 +2358,7 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
 // endregion binary_search_tree methods_insert and methods_emplace implementation
 
 // region binary_search_tree swap_method implementation
-
+//////////////////////////////
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 void binary_search_tree<tkey, tvalue, compare, tag>::swap(binary_search_tree& other) noexcept {
 	if (this == &other) return;
