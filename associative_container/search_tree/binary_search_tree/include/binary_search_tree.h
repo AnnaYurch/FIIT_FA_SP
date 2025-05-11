@@ -2518,7 +2518,7 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_s
 
 	return infix_iterator(next);
 }
-//////////////////////////////
+
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator binary_search_tree<
 		tkey, tvalue, compare, tag>::erase(infix_const_iterator pos) {
