@@ -610,7 +610,7 @@ namespace __detail
             *node = nullptr;
         }
     }
-//////////////////////////////
+
     template<typename tkey, typename tvalue, typename compare>
     void bst_impl<tkey, tvalue, compare, AVL_TAG>::post_insert(
             binary_search_tree<tkey, tvalue, compare, AVL_TAG>& cont,
@@ -621,9 +621,9 @@ namespace __detail
         using avl_node = typename AVL_tree<tkey, tvalue, compare>::node;
         using node_type = typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node;
 
-        auto* current = static_cast<avl_node*>((*node)->parent);  // Кастим на avl_node
+        auto* current = static_cast<avl_node*>((*node)->parent);
 
-        while (current != nullptr) {
+        while (current) {
             current->recalculate_height();
             short balance = current->get_balance();
 
@@ -633,9 +633,9 @@ namespace __detail
                     ? current->parent->left_subtree
                     : current->parent->right_subtree);
 
-            if (balance > 1) { // Right-heavy
+            if (balance > 1) { // правый жирный
                 auto *right = static_cast<avl_node *>(current->right_subtree);
-                if (right && right->get_balance() < 0) { // Right-Left case
+                if (right && right->get_balance() < 0) { // подлевый жирный
                     node_type *&right_ref = (right->parent->left_subtree == right)
                         ? right->parent->left_subtree
                         : right->parent->right_subtree;
@@ -650,9 +650,9 @@ namespace __detail
                 }
 
                 current = static_cast<avl_node *>(subtree_ref);
-            } else if (balance < -1) { // Left-heavy
+            } else if (balance < -1) { // левый жирный
                 auto *left = static_cast<avl_node *>(current->left_subtree);
-                if (left && left->get_balance() > 0) { // Left-Right case
+                if (left && left->get_balance() > 0) { // подповорот
                     node_type *&left_ref = (left->parent->left_subtree == left)
                         ? left->parent->left_subtree
                         : left->parent->right_subtree;
@@ -673,82 +673,85 @@ namespace __detail
         }
     }
 
-
     template<typename tkey, typename tvalue, typename compare>
     void bst_impl<tkey, tvalue, compare, AVL_TAG>::erase(
     binary_search_tree<tkey, tvalue, compare, AVL_TAG> &cont,
     typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node **node_ptr)
     {
+        if (node_ptr == nullptr || *node_ptr == nullptr) return;
+
 
         using node_type = typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node;
         using avl_node = typename AVL_tree<tkey, tvalue, compare>::node;
-
-        if (node_ptr == nullptr || *node_ptr == nullptr) return;
 
         node_type *node = *node_ptr;
         node_type *parent = node->parent;
         node_type *balance_start = parent;
 
-        if (node->left_subtree == nullptr && node->right_subtree == nullptr) {
+        if (!node->left_subtree && !node->right_subtree) { //бездетная
             if (parent) {
-                if (parent->left_subtree == node) parent->left_subtree = nullptr;
-                else parent->right_subtree = nullptr;
+                if (parent->left_subtree == node) {
+                    parent->left_subtree = nullptr;
+                } else {
+                    parent->right_subtree = nullptr;
+                }
             } else {
                 cont._root = nullptr;
             }
             delete_node(cont, node_ptr);
         }
         else if (node->left_subtree == nullptr || node->right_subtree == nullptr) {
-            // Случай 2: Один потомок
             node_type *child = node->left_subtree ? node->left_subtree : node->right_subtree;
             child->parent = parent;
 
             if (parent) {
-                if (parent->left_subtree == node) parent->left_subtree = child;
-                else parent->right_subtree = child;
+                if (parent->left_subtree == node) {
+                    parent->left_subtree = child;
+                } else {
+                    parent->right_subtree = child;
+                }
             } else {
                 cont._root = child;
             }
             balance_start = child;
             delete_node(cont, node_ptr);
-        }
-        else {
-            node_type *predecessor = node->left_subtree;
-            while (predecessor->right_subtree) {
-                predecessor = predecessor->right_subtree;
+        } else {
+            node_type *new_new = node->left_subtree;
+            while (new_new->right_subtree) {
+                new_new = new_new->right_subtree;
             }
 
-            balance_start = predecessor;
+            balance_start = new_new;
 
-            if (predecessor->parent != node) {
-                predecessor->parent->right_subtree = predecessor->left_subtree;
-                if (predecessor->left_subtree) {
-                    predecessor->left_subtree->parent = predecessor->parent;
+            if (new_new->parent != node) {
+                new_new->parent->right_subtree = new_new->left_subtree;
+                if (new_new->left_subtree) {
+                    new_new->left_subtree->parent = new_new->parent;
                 }
-                balance_start = predecessor->parent; // Обновляем точку начала
+                balance_start = new_new->parent;
             }
 
-            predecessor->left_subtree = (node->left_subtree == predecessor) ?
-                                      predecessor->left_subtree : node->left_subtree;
-            if (predecessor->left_subtree) {
-                predecessor->left_subtree->parent = predecessor;
+            new_new->left_subtree = (node->left_subtree == new_new) ?
+                                    new_new->left_subtree : node->left_subtree;
+            if (new_new->left_subtree) {
+                new_new->left_subtree->parent = new_new;
             }
 
-            predecessor->right_subtree = node->right_subtree;
-            if (predecessor->right_subtree) {
-                predecessor->right_subtree->parent = predecessor;
+            new_new->right_subtree = node->right_subtree;
+            if (new_new->right_subtree) {
+                new_new->right_subtree->parent = new_new;
             }
 
-            predecessor->parent = node->parent;
+            new_new->parent = node->parent;
 
             if (node->parent) {
                 if (node->parent->left_subtree == node) {
-                    node->parent->left_subtree = predecessor;
+                    node->parent->left_subtree = new_new;
                 } else {
-                    node->parent->right_subtree = predecessor;
+                    node->parent->right_subtree = new_new;
                 }
             } else {
-                cont._root = predecessor;
+                cont._root = new_new;
             }
 
             delete_node(cont, node_ptr);
@@ -758,7 +761,7 @@ namespace __detail
         if (balance_start) {
             auto *current = static_cast<avl_node *>(balance_start);
 
-            while (current != nullptr) {
+            while (current) {
                 current->recalculate_height();
                 short balance = current->get_balance();
 
@@ -768,9 +771,9 @@ namespace __detail
                         ? current->parent->left_subtree
                         : current->parent->right_subtree);
 
-                if (balance > 1) { // Right-heavy
+                if (balance > 1) {
                     auto *right = static_cast<avl_node *>(current->right_subtree);
-                    if (right && right->get_balance() < 0) { // Right-Left case
+                    if (right && right->get_balance() < 0) { 
                         node_type *&right_ref = (right->parent->left_subtree == right)
                             ? right->parent->left_subtree
                             : right->parent->right_subtree;
@@ -785,9 +788,9 @@ namespace __detail
                     }
 
                     current = static_cast<avl_node *>(subtree_ref);
-                } else if (balance < -1) { // Left-heavy
+                } else if (balance < -1) {
                     auto *left = static_cast<avl_node *>(current->left_subtree);
-                    if (left && left->get_balance() > 0) { // Left-Right case
+                    if (left && left->get_balance() > 0) {
                         node_type *&left_ref = (left->parent->left_subtree == left)
                             ? left->parent->left_subtree
                             : left->parent->right_subtree;
@@ -807,9 +810,7 @@ namespace __detail
                 current = static_cast<avl_node *>(current->parent);
             }
         }
-    } // erase
-
-
+    }
 }
 
 template<typename tkey, typename tvalue, typename compare>
