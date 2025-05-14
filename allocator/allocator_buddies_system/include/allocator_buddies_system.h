@@ -33,14 +33,13 @@ namespace __detail
 
 class allocator_buddies_system final:
     public smart_mem_resource,
-    public allocator_test_utils,
+    public virtual allocator_test_utils, //virtual
     public allocator_with_fit_mode,
     private logger_guardant,
     private typename_holder
 {
 
 private:
-
 
     struct block_metadata
     {
@@ -71,10 +70,10 @@ public:
             allocator_with_fit_mode::fit_mode allocate_fit_mode = allocator_with_fit_mode::fit_mode::first_fit);
 
     allocator_buddies_system(
-        allocator_buddies_system const &other);
+        allocator_buddies_system const &other) = delete;
     
     allocator_buddies_system &operator=(
-        allocator_buddies_system const &other);
+        allocator_buddies_system const &other) = delete;
     
     allocator_buddies_system(
         allocator_buddies_system &&other) noexcept;
@@ -96,12 +95,42 @@ public:
 
     inline void set_fit_mode(
         allocator_with_fit_mode::fit_mode mode) override;
+    
+    // дописола
 
+    allocator_with_fit_mode::fit_mode &get_fit_mod() const noexcept;
+
+    void *get_first(size_t size) const noexcept;
+
+    void *get_best(size_t size) const noexcept;
+
+    void *get_worst(size_t size) const noexcept;
 
     std::vector<allocator_test_utils::block_info> get_blocks_info() const noexcept override;
 
-private:
+    inline void* slide(void* mem, size_t size) const noexcept;
 
+    //можно кикнуть
+    static size_t pow_2(size_t power_of_2) noexcept;
+
+    inline size_t get_size_block(void* current_block) const noexcept;
+
+    inline size_t get_size_full() const noexcept;
+
+    static std::string get_info_in_string(const std::vector<allocator_test_utils::block_info>& vec) noexcept;
+
+    void* get_twin(void* current_block) noexcept;
+
+    //bool is_occupied(void* current_block) noexcept;
+
+    std::mutex &get_mutex() const noexcept;
+    
+    //досюда
+private:
+    void fill_allocator_fields(size_t space_size,
+        std::pmr::memory_resource *parent_allocator,
+        logger *logger,
+        allocator_with_fit_mode::fit_mode allocate_fit_mode); //добавила
     
     inline logger *get_logger() const override;
     
