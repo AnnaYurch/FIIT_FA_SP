@@ -31,7 +31,6 @@ private:
 
     void *_trusted_memory;
 
-    //мяу
     void* allocate_first_fit(size_t size);
 	void* allocate_best_fit(size_t size);
 	void* allocate_worst_fit(size_t size);
@@ -39,7 +38,7 @@ private:
 	void* allocate_in_hole(char* address, size_t size, void** first_block_ptr, void* prev_block, void* next_block, size_t size_free);
 	std::pmr::memory_resource* get_parent_resource() const noexcept;
 	allocator_with_fit_mode::fit_mode get_fit_mode() const;
-    //мяу
+
 public:
     
     ~allocator_boundary_tags() override;

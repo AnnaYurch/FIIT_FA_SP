@@ -39,21 +39,25 @@ inline std::string allocator_global_heap::get_typename() const {
 }
 
 allocator_global_heap::allocator_global_heap(logger *logger) : _logger(logger) {
-	trace_with_guard("Constructor of allocator_global_heap worked");
+	trace_with_guard("Constructor of allocator_global_heap started");
+	trace_with_guard("Constructor of allocator_global_heap finished");
 }
 
 allocator_global_heap::~allocator_global_heap() {
-	trace_with_guard("Destructor of allocator_global_heap worked");
+	trace_with_guard("Destructor of allocator_global_heap started");
+	trace_with_guard("Destructor of allocator_global_heap finished");
 }
-//копирующий конструктор
+
 allocator_global_heap::allocator_global_heap(const allocator_global_heap &other) : _logger(other._logger) {
-	trace_with_guard("Copy constructor of allocator_global_heap worked");
+	trace_with_guard("Copy constructor of allocator_global_heap started");
+	trace_with_guard("Copy constructor of allocator_global_heap finished");
 }
 
 allocator_global_heap &allocator_global_heap::operator=(const allocator_global_heap &other) {
 	if (this != &other) {
+		trace_with_guard("Assignment constructor of allocator_global_heap started");
 		_logger = other._logger;
-		trace_with_guard("== of allocator_global_heap worked");
+		trace_with_guard("Assignment constructor of allocator_global_heap finished");
 	}
 
 	return *this;
@@ -62,15 +66,17 @@ allocator_global_heap &allocator_global_heap::operator=(const allocator_global_h
 bool allocator_global_heap::do_is_equal(const std::pmr::memory_resource &other) const noexcept {
 	return typeid(*this) == typeid(other);
 }
-//перемещающий конструктор
+
 allocator_global_heap::allocator_global_heap(allocator_global_heap &&other) noexcept : _logger(other._logger) {
-	trace_with_guard("&& constructor of allocator_global_heap worked");
+	trace_with_guard("Move constructor of allocator_global_heap started");
+	trace_with_guard("Move constructor of allocator_global_heap finished");
 }
-//перемещающее присваивание
+
 allocator_global_heap &allocator_global_heap::operator=(allocator_global_heap &&other) noexcept {
 	if (this != &other) {
+		trace_with_guard("Move assignment constructor of allocator_global_heap started");
 		_logger = other._logger;
-		trace_with_guard("&&= of allocator_global_heap worked");
+		trace_with_guard("Move assignment constructor of allocator_global_heap finished");
 	}
 
 	return *this;
