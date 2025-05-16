@@ -322,18 +322,17 @@ fraction fraction::arccosec(fraction const &epsilon) const {
 }
 
 fraction fraction::pow(size_t degree) const {
-	if (degree < 0) {
-		throw std::invalid_argument("Degree must be positive");
-	}
-	if (degree == 0) {
-		return {1, 1};
-	}
+    if (degree == 0) return fraction(1_bi, 1_bi); 
+    if (degree == 1) return *this;                
 
-    fraction result(1_bi, 1_bi);
-    for (size_t i = 0; i < degree; ++i) {
-        result *= *this;
+    if (degree % 2 == 0) {
+        //x^n = (x^2)^(n/2)
+        fraction squared = (*this) * (*this);
+        return squared.pow(degree / 2);
+    } else {
+        //x^n = x * x^(n-1)
+        return (*this) * pow(degree - 1);
     }
-    return result;
 }
 
 fraction fraction::root(size_t degree, fraction const &epsilon) const {

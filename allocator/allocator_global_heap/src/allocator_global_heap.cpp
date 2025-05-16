@@ -3,7 +3,6 @@
 #include <not_implemented.h>
 
 #include <sstream>
-//n - возвращаемое значение не должно быть проигнорено
 [[nodiscard]] void *allocator_global_heap::do_allocate_sm(size_t size) {
 	void *ptr;
 	debug_with_guard("Allocation of size started (size=" + std::to_string(size) + ")");
